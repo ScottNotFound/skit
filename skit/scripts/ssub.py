@@ -88,7 +88,7 @@ def format_time(time):
 
 def pargs():
     parser = argparse.ArgumentParser(
-        prog="scastep",
+        prog="ssub",
         description="castep submitter",
         epilog="""
             Options will be chosen with the following precedence, latter overriding former:
@@ -171,7 +171,7 @@ def main():
         "--constraint": '"intel&avx512"',
         "--mem-per-cpu": "6G",
         "--partition": "cpu",
-        "--time": "1--00:00:00",
+        "--time": "1-00:00:00",
         "--error": "$seed.err",
         "--output": "$seed.out",
         "--job-name": "$seed",
