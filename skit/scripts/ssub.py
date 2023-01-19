@@ -90,15 +90,23 @@ def pargs():
     parser = argparse.ArgumentParser(
         prog="ssub",
         description="castep submitter",
-        epilog="""
-            Options will be chosen with the following precedence, latter overriding former:
-            - Slurm defaults
-            - Program defaults
-            - Options from file scasteprc in parent directories from 3>2>1
-            - Options from file pointed at by $SCASTEP_OPTIONS
-            - Options from --default-file or --parent
-            - Other command line options to this program.
-            """,
+        epilog="""Options will be chosen with the following precedence, latter overriding former:
+
+- Slurm defaults
+- Program defaults
+- Options from file scasteprc in parent directories from 3>2>1
+- Options from file pointed at by $SCASTEP_OPTIONS
+- Options from --default-file or --parent
+- Other command line options to this program.
+
+example usage:
+
+ssub seed
+ssub seed -n 2 -m 4G -t '2-00'
+ssub seed -J '$seed:run01'
+
+In the last example, `$seed` will be replaced with the seed..""",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
     parser.add_argument("seed")
