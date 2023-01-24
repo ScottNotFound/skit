@@ -167,6 +167,10 @@ In the last example, `$seed` will be replaced with the seed..""",
         help="Whether to save the job script to a file. Will save to seed.sh.",
         action="store_true",
     )
+    parser.add_argument(
+        "--ib",
+        help="Whether to use Infiniband. This will change the launch command from 'srun' to 'mpirun', apply the option '-iface ibs2' to mpirun, and apply the constraint 'ib' to sbatch.",
+    )
 
     return parser.parse_args()
 
@@ -185,6 +189,9 @@ def main():
         "--job-name": "$seed",
         "--ntasks": "1",
     }
+
+    if ns.ib:
+        options["--constraint"] = "ib"
 
     for i in range(1, 4):
         file = "../" * i + "scasteprc"
@@ -228,6 +235,9 @@ def main():
     srun_str = "srun --kill-on-bad-exit=1 --ntasks=$np castep.mpi $seed" + (
         " -dryrun" if ns.dryrun else ""
     )
+    mpirun_str = "mpirun -iface ibs2 -np $np castep.mpi $seed" + (
+        " -dryrun" if ns.dryrun else ""
+    )
     diagnostic_str = (
         """## run job diagnostics
 echo Timings:
@@ -239,7 +249,7 @@ sacct -o JobID,JobName,Partition,ReqMem,MaxRSS,MaxVMSize -j $SLURM_JOBID"""
     )
 
     job_str = "\n".join(
-        ["#!/bin/bash", options_str, module_str, mpi_lib_str, srun_str, diagnostic_str]
+        ["#!/bin/bash", options_str, module_str, mpi_lib_str, mpirun_str if ns.ib else srun_str, diagnostic_str]
     )
 
     job_str = job_str.replace("$seed", ns.seed).replace("$np", options["--ntasks"])
