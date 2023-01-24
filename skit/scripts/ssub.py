@@ -169,6 +169,7 @@ In the last example, `$seed` will be replaced with the seed..""",
     )
     parser.add_argument(
         "--ib",
+        action="store_true",
         help="Whether to use Infiniband. This will change the launch command from 'srun' to 'mpirun', apply the option '-iface ibs2' to mpirun, and apply the constraint 'ib' to sbatch.",
     )
 
