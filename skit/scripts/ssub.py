@@ -128,7 +128,7 @@ In the last example, `$seed` will be replaced with the seed..""",
         "--castep",
         help="The version of castep to use.",
         default="19.11",
-        choices=["19.11", "21.11", "22.11"],
+        choices=["19.11", "21.11", "22.11", "19", "21", "22"],
     )
     parser.add_argument("-t", "--time", help="Wall time to run for.")
     parser.add_argument("-n", "--tasks", help="Number of cores or tasks to assign.")
@@ -227,6 +227,9 @@ def main():
                 "--job-name": "$seed",
             }
         )
+
+    if ns.castep in ["19", "21", "22"]:
+        ns.castep += ".11"
 
     if ns.mem_per_cpu:
         options["--mem-per-cpu"] = ns.mem_per_cpu
