@@ -179,6 +179,12 @@ In the last example, `$seed` will be replaced with the seed..""",
         help="Forces the error, output files and the job name to be based on the seed, regardless of defaults and other settings defined by option files. "
         "Options passed in the command line have priority so they will still take effect.",
     )
+    parser.add_argument(
+        "--mpi",
+        choices=["intel", "openmpi"],
+        default="openmpi",
+        help="Which mpi castep build to use. Openmpi build is newer, and uses a lot less memory.",
+    )
 
     return parser.parse_args()
 
@@ -247,8 +253,11 @@ def main():
     options_str = "\n".join(
         [f"#SBATCH {k}" + (f"={v}" if v else "") for k, v in options.items()]
     )
-    module_str = f"module purge 2>&1\nmodule load castep/skylake/{ns.castep} 2>&1"
-    mpi_lib_str = f"export I_MPI_PMI_LIBRARY={ns.pmi_library or I_MPI_PMI_LIBRARY}"
+    mpi = "" if ns.mpi == "intel" else "-openmpi"
+    module_str = (
+        f"module purge 2>&1\nmodule load castep/skylake{mpi}/{ns.castep} 2>&1"
+    )
+    mpi_lib_str = f"export I_MPI_PMI_LIBRARY={ns.pmi_library or I_MPI_PMI_LIBRARY}" if ns.mpi == "intel" else ""
     srun_str = "srun --kill-on-bad-exit=1 --ntasks=$np castep.mpi $seed" + (
         " -dryrun" if ns.dryrun else ""
     )
@@ -266,7 +275,14 @@ sacct -o JobID,JobName,Partition,ReqMem,MaxRSS,MaxVMSize -j $SLURM_JOBID"""
     )
 
     job_str = "\n".join(
-        ["#!/bin/bash", options_str, module_str, mpi_lib_str, mpirun_str if ns.ib else srun_str, diagnostic_str]
+        [
+            "#!/bin/bash",
+            options_str,
+            module_str,
+            mpi_lib_str,
+            mpirun_str if (ns.ib and ns.mpi == "intel") else srun_str,
+            diagnostic_str,
+        ]
     )
 
     job_str = job_str.replace("$seed", ns.seed).replace("$np", options["--ntasks"])
