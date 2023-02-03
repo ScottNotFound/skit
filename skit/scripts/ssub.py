@@ -170,7 +170,14 @@ In the last example, `$seed` will be replaced with the seed..""",
     parser.add_argument(
         "--ib",
         action="store_true",
-        help="Whether to use Infiniband. This will change the launch command from 'srun' to 'mpirun', apply the option '-iface ibs2' to mpirun, and apply the constraint 'ib' to sbatch.",
+        help="Whether to use Infiniband. Simply applies the constraint 'ib' to sbatch.",
+    )
+    parser.add_argument(
+        "-F",
+        "--seed-files",
+        action="store_true",
+        help="Forces the error, output files and the job name to be based on the seed, regardless of defaults and other settings defined by option files. "
+        "Options passed in the command line have priority so they will still take effect.",
     )
 
     return parser.parse_args()
@@ -205,6 +212,15 @@ def main():
         options.update(strip_sbatch(ns.parent))
     elif ns.default_file:
         options.update(strip_sbatch(ns.default_file))
+
+    if ns.seed_files:
+        options.update(
+            {
+                "--error": "$seed.err",
+                "--output": "$seed.out",
+                "--job-name": "$seed",
+            }
+        )
 
     if ns.mem_per_cpu:
         options["--mem-per-cpu"] = ns.mem_per_cpu
