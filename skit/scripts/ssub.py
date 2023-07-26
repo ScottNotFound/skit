@@ -94,8 +94,6 @@ def pargs():
 
 - Slurm defaults
 - Program defaults
-- Options from file scasteprc in parent directories from 3>2>1
-- Options from file pointed at by $SCASTEP_OPTIONS
 - Options from --default-file or --parent
 - Other command line options to this program.
 
@@ -128,7 +126,7 @@ In the last example, `$seed` will be replaced with the seed..""",
         "--castep",
         help="The version of castep to use.",
         default="19.11",
-        choices=["19.11", "21.11", "22.11", "19", "21", "22"],
+        choices=["19.11", "21.11", "22.11", "23.1", "19", "21", "22", "23"],
     )
     parser.add_argument("-t", "--time", help="Wall time to run for.")
     parser.add_argument("-n", "--tasks", help="Number of cores or tasks to assign.")
@@ -185,6 +183,18 @@ In the last example, `$seed` will be replaced with the seed..""",
         default="openmpi",
         help="Which mpi castep build to use. Openmpi build is newer, and uses a lot less memory.",
     )
+    parser.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="Prevents the default information and diagnostics from being added to the sbatch content. Overriden by -D and -I.",
+    )
+    parser.add_argument(
+        "-I",
+        "--information",
+        action="store_true",
+        help="Adds information about the job printed before the job step is run.",
+    )
 
     return parser.parse_args()
 
@@ -228,8 +238,10 @@ def main():
             }
         )
 
-    if ns.castep in ["19", "21", "22"]:
-        ns.castep += ".11"
+    castepvmap = {"19": "19.11", "21": "21.11", "22": "22.11", "23": "23.1"}
+
+    if ns.castep in castepvmap:
+        ns.castep = castepvmap[ns.castep]
 
     if ns.mem_per_cpu:
         options["--mem-per-cpu"] = ns.mem_per_cpu
@@ -268,12 +280,49 @@ def main():
         " -dryrun" if ns.dryrun else ""
     )
     diagnostic_str = (
-        """## run job diagnostics
+        '''## run job diagnostics
 echo Timings:
 sacct -o JobID,Submit,Start,End,CPUTime,State -j $SLURM_JOBID
 echo Resources:
-sacct -o JobID,JobName,Partition,ReqMem,MaxRSS,MaxVMSize -j $SLURM_JOBID"""
-        if ns.diagnose
+sacct -o JobID,JobName,Partition,ReqMem,MaxRSS,MaxVMSize -j $SLURM_JOBID
+'''
+        if ns.diagnose or not ns.quiet
+        else ""
+    )
+
+    information_str = (
+        '''## INFORMATION
+echo "==== JOB INFORMATION ===="
+echo "Start Date                $(date)"
+echo "Hostname                  $(hostname)"
+echo "Working Directory         $(pwd)"
+echo "User                      $(whoami)"
+echo ""
+echo "Cluster                   $SLURM_CLUSTER_NAME"
+echo "Job ID                    $SLURM_JOB_ID"
+echo "Job Name                  $SLURM_JOB_NAME"
+echo "Job Partition             $SLURM_JOB_PARTITION"
+echo "Job Start Time            $SLURM_JOB_START_TIME"
+echo "Job Projected End Time    $SLURM_JOB_END_TIME"
+echo "Job Account               $SLURM_JOB_ACCOUNT"
+echo "Submitted from            $SLURM_SUBMIT_HOST"
+echo ""
+echo "Allocated Nodes           $SLURM_JOB_NUM_NODES"
+echo "Allocated Tasks           $SLURM_NTASKS"
+echo "Allocated Mem per Node    $SLURM_MEM_PER_NODE"
+echo "Allocated Mem per Task    $SLURM_MEM_PER_CPU"
+echo ""
+echo "Node List                 $SLURM_JOB_NODELIST"
+echo "CPUs per Node             $SLURM_JOB_CPUS_PER_NODE"
+echo "Host List:"
+echo $(echo $(srun hostname) | tr ' ' '\n' | sort | uniq -c)
+echo ""
+echo "CASTEP EXE                $(which castep.mpi)"
+echo "$(castep.mpi -v)"
+echo ""
+echo "== END JOB INFORMATION =="
+'''
+        if ns.information or not ns.quiet
         else ""
     )
 
@@ -283,6 +332,7 @@ sacct -o JobID,JobName,Partition,ReqMem,MaxRSS,MaxVMSize -j $SLURM_JOBID"""
             options_str,
             module_str,
             mpi_lib_str,
+            information_str,
             mpirun_str if (ns.ib and ns.mpi == "intel") else srun_str,
             diagnostic_str,
         ]
