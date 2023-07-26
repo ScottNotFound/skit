@@ -315,7 +315,7 @@ echo ""
 echo "Node List                 $SLURM_JOB_NODELIST"
 echo "CPUs per Node             $SLURM_JOB_CPUS_PER_NODE"
 echo "Host List:"
-echo $(echo $(srun hostname) | tr ' ' '\n' | sort | uniq -c)
+echo $(echo $(srun hostname) | tr ' ' '\\n' | sort | uniq -c)
 echo ""
 echo "CASTEP EXE                $(which castep.mpi)"
 echo "$(castep.mpi -v)"
