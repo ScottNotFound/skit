@@ -125,7 +125,7 @@ In the last example, `$seed` will be replaced with the seed..""",
         "-c",
         "--castep",
         help="The version of castep to use.",
-        default="19.11",
+        default="23.1",
         choices=["19.11", "21.11", "22.11", "23.1", "19", "21", "22", "23"],
     )
     parser.add_argument("-t", "--time", help="Wall time to run for.")
@@ -150,16 +150,6 @@ In the last example, `$seed` will be replaced with the seed..""",
         help="Slurm constraints. Chooses based on castep requirements of not given.",
     )
     parser.add_argument(
-        "--pmi-library",
-        help=f"The PMI library to use. Sets $I_MPI_PMI_LIBRARY to {I_MPI_PMI_LIBRARY} by default.",
-    )
-    parser.add_argument(
-        "-D",
-        "--diagnose",
-        help="Prints diagnostics to stdout after job ends.",
-        action="store_true",
-    )
-    parser.add_argument(
         "-s",
         "--save",
         help="Whether to save the job script to a file. Will save to seed.sh.",
@@ -176,12 +166,6 @@ In the last example, `$seed` will be replaced with the seed..""",
         action="store_true",
         help="Forces the error, output files and the job name to be based on the seed, regardless of defaults and other settings defined by option files. "
         "Options passed in the command line have priority so they will still take effect.",
-    )
-    parser.add_argument(
-        "--mpi",
-        choices=["intel", "openmpi"],
-        default="openmpi",
-        help="Which mpi castep build to use. Openmpi build is newer, and uses a lot less memory.",
     )
     parser.add_argument(
         "-q",
@@ -268,19 +252,15 @@ def main():
     options_str = "\n".join(
         [f"#SBATCH {k}" + (f"={v}" if v else "") for k, v in options.items()]
     )
-    mpi = "" if ns.mpi == "intel" else "-openmpi"
     module_str = (
-        f"module purge 2>&1\nmodule load castep/skylake{mpi}/{ns.castep} 2>&1"
+        f"module purge 2>&1\nmodule load castep/skylake-openmpi/{ns.castep} 2>&1"
     )
-    mpi_lib_str = f"export I_MPI_PMI_LIBRARY={ns.pmi_library or I_MPI_PMI_LIBRARY}" if ns.mpi == "intel" else ""
-    srun_str = "srun --kill-on-bad-exit=1 --ntasks=$np castep.mpi $seed" + (
-        " -dryrun" if ns.dryrun else ""
-    )
-    mpirun_str = "mpirun -iface ibs2 -np $np castep.mpi $seed" + (
+    srun_str = "srun -K castep.mpi $seed" + (
         " -dryrun" if ns.dryrun else ""
     )
     diagnostic_str = (
-        '''## run job diagnostics
+        '''
+## run job diagnostics
 echo Timings:
 sacct -o JobID,Submit,Start,End,CPUTime,State -j $SLURM_JOBID
 echo Resources:
@@ -291,7 +271,8 @@ sacct -o JobID,JobName,Partition,ReqMem,MaxRSS,MaxVMSize -j $SLURM_JOBID
     )
 
     information_str = (
-        '''## INFORMATION
+        '''
+## INFORMATION
 echo "==== JOB INFORMATION ===="
 echo "Start Date                $(date)"
 echo "Hostname                  $(hostname)"
@@ -314,13 +295,9 @@ echo "Allocated Mem per Task    $SLURM_MEM_PER_CPU"
 echo ""
 echo "Node List                 $SLURM_JOB_NODELIST"
 echo "CPUs per Node             $SLURM_JOB_CPUS_PER_NODE"
-echo "Host List:"
-echo $(echo $(srun hostname) | tr ' ' '\\n' | sort | uniq -c)
-echo ""
-echo "CASTEP EXE                $(which castep.mpi)"
-echo "$(castep.mpi -v)"
 echo ""
 echo "== END JOB INFORMATION =="
+
 '''
         if ns.information or not ns.quiet
         else ""
@@ -331,9 +308,8 @@ echo "== END JOB INFORMATION =="
             "#!/bin/bash",
             options_str,
             module_str,
-            mpi_lib_str,
             information_str,
-            mpirun_str if (ns.ib and ns.mpi == "intel") else srun_str,
+            srun_str,
             diagnostic_str,
         ]
     )
