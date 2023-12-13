@@ -266,7 +266,7 @@ sacct -o JobID,Submit,Start,End,CPUTime,State -j $SLURM_JOBID
 echo Resources:
 sacct -o JobID,JobName,Partition,ReqMem,MaxRSS,MaxVMSize -j $SLURM_JOBID
 '''
-        if ns.diagnose or not ns.quiet
+        if not ns.quiet
         else ""
     )
 
